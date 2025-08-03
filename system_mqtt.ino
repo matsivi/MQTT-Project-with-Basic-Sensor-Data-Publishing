@@ -7,8 +7,8 @@
 const char* ssid = "";
 const char* password = "";
 
-// Τοπικός MQTT Broker (Mosquitto) Για Bridge to Bridge
-// Αν χρησιμοποιείτε το Mosquitto, βεβαιωθείτε ότι έχετε εγκαταστήσει και ρυθμίσει τον Mosquitto broker στον υπολογιστή σας με τις σωστες ρυθμίσεις.
+// Local MQTT Broker (Mosquitto) for Bridge to Bridge
+// If you use Mosquitto, make sure you have installed and configured the Mosquitto broker on your computer with the correct settings.
 const char* mqtt_server = "";
 const int mqtt_port = 1883;
 const char* mqtt_client_id = "ESP32_Client";
@@ -41,7 +41,7 @@ const long gmt_offset_sec = 2 * 3600;
 const int daylight_offset_sec = 3600;
 
 // Timing variables
-const unsigned long MAX_RUNTIME = 10 * 60 * 1000; // 10 λεπτά σε χιλιοστά του δευτερολέπτου
+const unsigned long MAX_RUNTIME = 10 * 60 * 1000; // 10 minutes in milliseconds
 unsigned long start_time;
 
 void connectToWiFi() {
@@ -49,20 +49,20 @@ void connectToWiFi() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     wifi_reconnect_count++;
-    Serial.println("Σύνδεση στο WiFi...");
+    Serial.println("Connecting to WiFi...");
   }
-  Serial.println("Συνδεθήκατε στο WiFi!");
+  Serial.println("Connected to WiFi!");
 }
 
 void reconnectMQTT() {
   client.setKeepAlive(60); 
   while (!client.connected()) {
-    Serial.println("Προσπάθεια σύνδεσης στο τοπικό MQTT broker...");
+    Serial.println("Attempting to connect to local MQTT broker...");
     if (client.connect(mqtt_client_id)) { 
-      Serial.println("Συνδεθήκατε επιτυχώς στο τοπικό MQTT broker!");
+      Serial.println("Successfully connected to local MQTT broker!");
     } else {
       mqtt_reconnect_count++;
-      Serial.print("Αποτυχία σύνδεσης. Κωδικός σφάλματος: ");
+      Serial.print("Connection failed. Error code: ");
       Serial.println(client.state());
       delay(5000);
     }
@@ -83,7 +83,7 @@ void setup() {
   // Initialize Serial Monitor
   Serial.begin(115200);
   delay(1000);
-  Serial.println("Ξεκινάει η διαδικασία...");
+  Serial.println("Process starting...");
 
   // Connect to Wi-Fi
   connectToWiFi();
@@ -93,11 +93,11 @@ void setup() {
 
   // Initialize DHT Sensor
   dht.begin();
-  Serial.println("DHT22 ενεργοποιήθηκε.");
+  Serial.println("DHT22 activated.");
 
   // Initialize NTP
   configTime(gmt_offset_sec, daylight_offset_sec, ntp_server);
-  Serial.println("NTP Server ρυθμίστηκε.");
+  Serial.println("NTP Server configured.");
 
   // Record the start time
   start_time = millis();
@@ -107,7 +107,7 @@ void loop() {
   // Check if the runtime has exceeded the maximum allowed time
   unsigned long current_time = millis();
   if (current_time - start_time > MAX_RUNTIME) {
-    Serial.println("Το χρονικό όριο έληξε. Σταμάτημα αποστολής δεδομένων.");
+    Serial.println("Time limit exceeded. Stopping data transmission.");
     while (true) {
       delay(1000);
     }
@@ -115,14 +115,14 @@ void loop() {
 
   // Verify Wi-Fi connection
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Απώλεια σύνδεσης WiFi...");
+    Serial.println("WiFi connection lost...");
     connectToWiFi();
   }
 
   // Verify MQTT connection
   if (!client.connected()) {
-    Serial.println("Απώλεια σύνδεσης MQTT...");
-    mqtt_reconnect_count++;  // Αύξηση του μετρητή αποσυνδέσεων MQTT
+    Serial.println("MQTT connection lost...");
+    mqtt_reconnect_count++;
     reconnectMQTT();
   }
   client.loop();
@@ -133,11 +133,11 @@ void loop() {
   int airQuality = analogRead(MQ135_PIN);
 
   if (!isnan(humidity) && !isnan(temperature)) {
-    Serial.print("Θερμοκρασία: ");
+    Serial.print("Temperature: ");
     Serial.println(temperature);
-    Serial.print("Υγρασία: ");
+    Serial.print("Humidity: ");
     Serial.println(humidity);
-    Serial.print("Ποιότητα Αέρα: ");
+    Serial.print("Air Quality: ");
     Serial.println(airQuality);
 
     // Get the current timestamp
@@ -154,34 +154,34 @@ void loop() {
     // Publish to Local MQTT Broker
     total_messages++;
     if (client.publish(publish_topic, payload.c_str())) {
-      Serial.println("Δεδομένα στάλθηκαν επιτυχώς στον τοπικό broker!");
+      Serial.println("Data sent successfully to local broker!");
       Serial.print("Timestamp: ");
       Serial.println(timestamp);
     } else {
       failed_messages++;
-      Serial.println("Αποτυχία αποστολής δεδομένων στον τοπικό broker.");
+      Serial.println("Failed to send data to local broker.");
     }
   } else {
-    Serial.println("Σφάλμα ανάγνωσης από τους αισθητήρες.");
+    Serial.println("Sensor read error.");
   }
 
-  // Υπολογισμός ποσοστών επιτυχίας/αποτυχίας
+  // Calculate success/failure rates
   float success_rate = (total_messages > 0) ? 
                        (100.0 * (total_messages - failed_messages) / total_messages) : 0.0;
   float failure_rate = 100.0 - success_rate;
 
-  // Εμφάνιση αναφοράς
-  Serial.println("\n--- Αναφορά Στατιστικών ---");
-  Serial.printf("WiFi Επανασυνδέσεις: %d\n", wifi_reconnect_count);
-  Serial.printf("MQTT Επανασυνδέσεις: %d\n", mqtt_reconnect_count);
-  Serial.printf("Συνολικά μηνύματα: %d\n", total_messages);
-  Serial.printf("Αποτυχημένα μηνύματα: %d (%.2f%%)\n", failed_messages, failure_rate);
-  Serial.printf("Ποσοστό Επιτυχίας: %.2f%%\n", success_rate);
+  // Show statistics report
+  Serial.println("\n--- Statistics Report ---");
+  Serial.printf("WiFi Reconnections: %d\n", wifi_reconnect_count);
+  Serial.printf("MQTT Reconnections: %d\n", mqtt_reconnect_count);
+  Serial.printf("Total messages: %d\n", total_messages);
+  Serial.printf("Failed messages: %d (%.2f%%)\n", failed_messages, failure_rate);
+  Serial.printf("Success Rate: %.2f%%\n", success_rate);
   Serial.println("---------------------------");
-Serial.print("ESP32 IP Address: ");
-Serial.println(WiFi.localIP());
+  Serial.print("ESP32 IP Address: ");
+  Serial.println(WiFi.localIP());
 
   // Wait before next measurement
-  Serial.println("Αναμονή για την επόμενη μέτρηση...");
+  Serial.println("Waiting for next measurement...");
   delay(20000);  // Wait for 20 seconds
 }
