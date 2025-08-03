@@ -22,7 +22,7 @@ This project is an ESP32-based system that reads environmental data from sensors
   - PubSubClient.h
   - DHT.h
   - time.h
-- Mosquitto MQTT broker running locally (default IP: 192.168.1.88, port: 1883)
+- Mosquitto MQTT broker running locally (default IP, port: 1883)
 
 ## Configuration
 Edit the following variables in `system_mqtt.ino`:
