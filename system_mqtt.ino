@@ -4,11 +4,12 @@
 #include <time.h>
 
 // Wi-Fi Credentials
-const char* ssid = "TSIVIDIS";
-const char* password = "21071966";
+const char* ssid = "";
+const char* password = "";
 
-// Τοπικός MQTT Broker (Mosquitto)
-const char* mqtt_server = "192.168.1.88";
+// Τοπικός MQTT Broker (Mosquitto) Για Bridge to Bridge
+// Αν χρησιμοποιείτε το Mosquitto, βεβαιωθείτε ότι έχετε εγκαταστήσει και ρυθμίσει τον Mosquitto broker στον υπολογιστή σας με τις σωστες ρυθμίσεις.
+const char* mqtt_server = "";
 const int mqtt_port = 1883;
 const char* mqtt_client_id = "ESP32_Client";
 const char* publish_topic = "channels/id/publish";
